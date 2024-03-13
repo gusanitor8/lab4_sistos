@@ -1,63 +1,67 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <pthread.h>
-#include <stdbool.h>
+#include <unistd.h>
 
-// declaramos los semaforos
-int semaphore_a = 1;
-int semaphore_b = 1;
 
-// declaramos las funciones de los semaforos
-void wait_(int s){
-    printf("bloqueando semaforo\n");
-    while(s <= 0);
-    s--;
+// Semaforos para los recursos
+pthread_mutex_t recurso1, recurso2;
+
+// Función para el proceso 1
+void *proceso1(void *arg) {
+  while (1) {
+    // Intenta adquirir el recurso 1
+    pthread_mutex_lock(&recurso1);
+    printf("Proceso 1 adquirió el recurso 1\n");
+
+    // Intenta adquirir el recurso 2
+    pthread_mutex_lock(&recurso2);
+    printf("Proceso 1 adquirió el recurso 2\n");
+
+    // Libera los recursos en orden inverso
+    pthread_mutex_unlock(&recurso2);
+    pthread_mutex_unlock(&recurso1);
+
+    // Espera un tiempo aleatorio
+    sleep(rand() % 5);
+  }
+  return NULL;
 }
 
-void signal_(int s){
-    printf("liberando semaforo\n");
-    s++;
+// Función para el proceso 2
+void *proceso2(void *arg) {
+  while (1) {
+    // Intenta adquirir el recurso 2
+    pthread_mutex_lock(&recurso2);
+    printf("Proceso 2 adquirió el recurso 2\n");
+
+    // Intenta adquirir el recurso 1
+    pthread_mutex_lock(&recurso1);
+    printf("Proceso 2 adquirió el recurso 1\n");
+
+    // Libera los recursos en orden inverso
+    pthread_mutex_unlock(&recurso1);
+    pthread_mutex_unlock(&recurso2);
+
+    // Espera un tiempo aleatorio
+    sleep(rand() % 5);
+  }
+  return NULL;
 }
 
-// declaramos la funcion del hilo
-void* thread_function_a(){
-    wait_(semaphore_a);
-    wait_(semaphore_b);
-    printf("hilo a\n");
-    for (int i = 0; i < 1000000; i++);
+int main() {
+  // Inicializa los semaforos
+  pthread_mutex_init(&recurso1, NULL);
+  pthread_mutex_init(&recurso2, NULL);
 
-    signal_(semaphore_a);
-    signal_(semaphore_b);
-}
+  // Crea los hilos
+  pthread_t hilo1, hilo2;
+  pthread_create(&hilo1, NULL, proceso1, NULL);
+  pthread_create(&hilo2, NULL, proceso2, NULL);
 
-void* thread_function_b(){
-    wait_(semaphore_b);
-    wait_(semaphore_a);
+  // Espera a que los hilos terminen (no terminarán)
+  pthread_join(hilo1, NULL);
+  pthread_join(hilo2, NULL);
 
-    printf("hilo b\n");
-    for (int i = 0; i < 1000000; i++);
-
-    signal_(semaphore_b);
-    signal_(semaphore_a);
-}
-
-void process_creation(){    
-    pthread_t thread_id_a;
-    pthread_t thread_id_b;
-
-    pthread_create(&thread_id_a, NULL, thread_function_a, NULL);
-    pthread_create(&thread_id_b, NULL, thread_function_b, NULL);
-
-    pthread_join(thread_id_a, NULL);
-    pthread_join(thread_id_b, NULL);
-}
-
-
-int main(){
-    process_creation();
-    // while (true){
-    //    process_creation();
-    // }
-    return 0;
+  return 0;
 }
